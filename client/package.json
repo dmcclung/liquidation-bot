@@ -1,5 +1,5 @@
 {
-  "name": "liquidation-bot",
+  "name": "liquidation-bot-client",
   "version": "1.0.0",
   "license": "MIT",
   "source": "src/index.html",
