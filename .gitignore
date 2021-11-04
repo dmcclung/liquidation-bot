@@ -4,6 +4,7 @@ coverage
 coverage.json
 typechain
 .parcel-cache
+dist
 
 #Hardhat files
 cache
