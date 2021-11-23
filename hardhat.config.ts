@@ -18,8 +18,7 @@ const config: HardhatUserConfig = {
       gasPrice: 225000000000,
       forking: {
         url: "https://api.avax.network/ext/bc/C/rpc",
-        enabled: true,
-        blockNumber: 6498470
+        blockNumber: 6668174
       },
     },
   },
