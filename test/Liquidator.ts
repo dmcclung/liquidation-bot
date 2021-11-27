@@ -1,9 +1,10 @@
-import { expect } from "chai";
-import { ethers, network } from "hardhat";
+import { expect } from "chai"
+import { ethers, network } from "hardhat"
 
 import joetrollerAbi from "../external/Joetroller.json"
 import joelensAbi from "../external/JoeLens.json"
 import priceOracleAbi from "../external/PriceOracle.json"
+import jtokenAbi from '../external/JToken.json'
 
 describe("Liquidator", () => {
 
@@ -50,8 +51,30 @@ describe("Liquidator", () => {
     console.log('collateralFactorMantissa:', ethers.utils.formatEther(market.collateralFactorMantissa))
   }
 
+  const getBalances = async () => {
+    const jToken = await ethers.getContractAt(jtokenAbi, tokenId)
+    // Nominal tokens
+    const jTokenBalance = ethers.utils.formatEther(await jToken.callStatic.balanceOf(accountId))
+    // 
+    const borrowBalanceCurrent = ethers.utils.formatEther(await jToken.callStatic.borrowBalanceCurrent(accountId))
+    const balanceOfUnderlyingCurrent = ethers.utils.formatEther(await jToken.callStatic.balanceOfUnderlying(accountId))
+    return {
+      jTokenBalance,
+      borrowBalanceCurrent,
+      balanceOfUnderlyingCurrent
+    }
+  }
+
+  const getJTokenBalances = async () => {
+    const joelens = await ethers.getContractAt(joelensAbi, joelensAddress)
+    const balances = await joelens.callStatic.jTokenBalances(tokenId, accountId)
+    console.log('jTokenBalance', ethers.utils.formatEther(balances['jTokenBalance']))
+    console.log('balanceOfUnderlyingCurrent', ethers.utils.formatEther(balances['balanceOfUnderlyingCurrent']))
+    console.log('supplyValueUSD', ethers.utils.formatEther(balances['supplyValueUSD']))
+    return balances
+  }
+
   it("should liquidate an unhealthy account", async () => {
-    
     const joetroller = await ethers.getContractAt(joetrollerAbi, joetrollerAddress)
     expect(joetroller).to.be.not.undefined
 
@@ -88,6 +111,13 @@ describe("Liquidator", () => {
     await printAvaxPrice()
 
     // Iterate through `tokens` and find a borrow position to repay
+    //const { jTokenBalance, borrowBalanceCurrent, balanceOfUnderlyingCurrent } = await getBalances()
+    const balances = await getBalances()
+    console.dir(balances)
+
+    const jTokenBalances = await getJTokenBalances()
+    console.dir(jTokenBalances)
+
 
     // Iterate through `tokens` and find a supply position to seize. Seizable position must satisfy:
     // a. supplyBalanceUnderlying > 0
