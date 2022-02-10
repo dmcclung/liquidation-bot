@@ -67,7 +67,6 @@ describe("Liquidator", () => {
     const jTokenBalance = ethers.utils.formatEther(
       await jToken.callStatic.balanceOf(accountId)
     );
-
     const borrowBalanceCurrent = ethers.utils.formatEther(
       await jToken.callStatic.borrowBalanceCurrent(accountId)
     );
