@@ -33,7 +33,7 @@ describe("FlashBorrower", () => {
     );
 
     console.log(
-      "TotalCollateralValueUSD: %s, TotalBorrowValueUSD: %s, HealthFactor: %s",
+      "\n\nTotalCollateralValueUSD: %s, TotalBorrowValueUSD: %s, HealthFactor: %s\n\n",
       ethers.utils.formatEther(accountLimits.totalCollateralValueUSD),
       ethers.utils.formatEther(accountLimits.totalBorrowValueUSD),
       ethers.utils.formatEther(accountLimits.healthFactor)
@@ -138,6 +138,8 @@ describe("FlashBorrower", () => {
 
     await printAvaxPrice();
 
+    await printAccountLimits();
+
     // Iterate through `tokens` and find a borrow position to repay
     // const { jTokenBalance, borrowBalanceCurrent, balanceOfUnderlyingCurrent } = await getBalances()
     const balances = await getJTokenBalances();
@@ -147,6 +149,18 @@ describe("FlashBorrower", () => {
       borrowBalanceCurrent,
       collateralEnabled,
     } = balances;
+
+    console.log(
+      "Balance of underlying current",
+      ethers.utils.formatUnits(balanceOfUnderlyingCurrent)
+    );
+
+    console.log(
+      "Borrow balance current",
+      ethers.utils.formatUnits(borrowBalanceCurrent)
+    );
+
+    console.log("Collateral enabled", collateralEnabled);
 
     // Iterate through `tokens` and find a supply position to seize. Seizable position must satisfy:
     // a. supplyBalanceUnderlying > 0
