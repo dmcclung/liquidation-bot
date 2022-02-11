@@ -1,6 +1,7 @@
 import { expect } from "chai";
 import { ethers, network } from "hardhat";
 
+// import jTokenAbi from "../external/JToken.json";
 import joelensAbi from "../external/JoeLens.json";
 import joetrollerAbi from "../external/Joetroller.json";
 import priceOracleAbi from "../external/PriceOracle.json";
@@ -60,7 +61,26 @@ describe("FlashBorrower", () => {
     );
   };
 
-  const getBalances = async () => {
+  /* const getBalances = async () => {
+    const jToken = await ethers.getContractAt(jTokenAbi, tokenId);
+    // Nominal tokens
+    const jTokenBalance = ethers.utils.formatEther(
+      await jToken.callStatic.balanceOf(accountId)
+    );
+    const borrowBalanceCurrent = ethers.utils.formatEther(
+      await jToken.callStatic.borrowBalanceCurrent(accountId)
+    );
+    const balanceOfUnderlyingCurrent = ethers.utils.formatEther(
+      await jToken.callStatic.balanceOfUnderlying(accountId)
+    );
+    return {
+      jTokenBalance,
+      borrowBalanceCurrent,
+      balanceOfUnderlyingCurrent,
+    };
+  }; */
+
+  const getJTokenBalances = async () => {
     const joelens = await ethers.getContractAt(joelensAbi, joelensAddress);
     const balances = await joelens.callStatic.jTokenBalances(
       tokenId,
@@ -71,6 +91,16 @@ describe("FlashBorrower", () => {
   };
 
   it("should liquidate an unhealthy account", async () => {
+    const joetroller = await ethers.getContractAt(
+      joetrollerAbi,
+      joetrollerAddress
+    );
+
+    expect(joetroller).to.be.not.undefined;
+
+    const joelens = await ethers.getContractAt(joelensAbi, joelensAddress);
+    expect(joelens).to.be.not.undefined;
+
     await printAccountLimits();
 
     await printCollateralFactor();
@@ -110,7 +140,7 @@ describe("FlashBorrower", () => {
 
     // Iterate through `tokens` and find a borrow position to repay
     // const { jTokenBalance, borrowBalanceCurrent, balanceOfUnderlyingCurrent } = await getBalances()
-    const balances = await getBalances();
+    const balances = await getJTokenBalances();
 
     const {
       balanceOfUnderlyingCurrent,
