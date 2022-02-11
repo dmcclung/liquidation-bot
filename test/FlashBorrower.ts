@@ -1,11 +1,11 @@
+import { expect } from "chai";
 import { ethers, network } from "hardhat";
 
-import jtokenAbi from "../external/JToken.json";
 import joelensAbi from "../external/JoeLens.json";
 import joetrollerAbi from "../external/Joetroller.json";
 import priceOracleAbi from "../external/PriceOracle.json";
 
-describe("Liquidator", () => {
+describe("FlashBorrower", () => {
   beforeEach(async () => {
     await ethers.provider.send("hardhat_reset", [
       {
@@ -61,43 +61,12 @@ describe("Liquidator", () => {
   };
 
   const getBalances = async () => {
-    const jToken = await ethers.getContractAt(jtokenAbi, tokenId);
-    // Nominal tokens
-    const jTokenBalance = ethers.utils.formatEther(
-      await jToken.callStatic.balanceOf(accountId)
-    );
-    //
-    const borrowBalanceCurrent = ethers.utils.formatEther(
-      await jToken.callStatic.borrowBalanceCurrent(accountId)
-    );
-    const balanceOfUnderlyingCurrent = ethers.utils.formatEther(
-      await jToken.callStatic.balanceOfUnderlying(accountId)
-    );
-    return {
-      jTokenBalance,
-      borrowBalanceCurrent,
-      balanceOfUnderlyingCurrent,
-    };
-  };
-
-  const getJTokenBalances = async () => {
     const joelens = await ethers.getContractAt(joelensAbi, joelensAddress);
     const balances = await joelens.callStatic.jTokenBalances(
       tokenId,
       accountId
     );
-    console.log(
-      "jTokenBalance",
-      ethers.utils.formatEther(balances.jTokenBalance)
-    );
-    console.log(
-      "balanceOfUnderlyingCurrent",
-      ethers.utils.formatEther(balances.balanceOfUnderlyingCurrent)
-    );
-    console.log(
-      "supplyValueUSD",
-      ethers.utils.formatEther(balances.supplyValueUSD)
-    );
+
     return balances;
   };
 
@@ -142,15 +111,41 @@ describe("Liquidator", () => {
     // Iterate through `tokens` and find a borrow position to repay
     // const { jTokenBalance, borrowBalanceCurrent, balanceOfUnderlyingCurrent } = await getBalances()
     const balances = await getBalances();
-    console.dir(balances);
 
-    const jTokenBalances = await getJTokenBalances();
-    console.dir(jTokenBalances);
+    const {
+      balanceOfUnderlyingCurrent,
+      borrowBalanceCurrent,
+      collateralEnabled,
+    } = balances;
 
     // Iterate through `tokens` and find a supply position to seize. Seizable position must satisfy:
     // a. supplyBalanceUnderlying > 0
     // b. enterMarket == true (otherwise it’s not posted as collateral)
     // c. Must have enough supplyBalanceUnderlying to seize 50% of borrow value
+
+    // TODO:
+    // get supply balance of jAvax / avax
+
+    // is it greater than 0
+
+    expect(balanceOfUnderlyingCurrent).to.be.gt(ethers.BigNumber.from(0));
+    // enterMarket == true or collateralEnabled?
+    expect(collateralEnabled).to.be.true;
+    // assert that supplyBalanceUnderlying is greater than 50% of borrow value
+    expect(balanceOfUnderlyingCurrent).to.be.gt(
+      borrowBalanceCurrent.div(ethers.BigNumber.from(2))
+    );
+
+    const FlashBorrower = await ethers.getContractFactory("FlashBorrower");
+    const flashBorrower = await FlashBorrower.deploy();
+    await flashBorrower.deployed();
+
+    const flashTx = await flashBorrower.initiateFlashLoan(
+      accountId,
+      tokenId,
+      borrowBalanceCurrent
+    );
+    await flashTx.wait();
 
     // Perform flash loan:
     // a. Borrow borrowed token to repay borrow position.
