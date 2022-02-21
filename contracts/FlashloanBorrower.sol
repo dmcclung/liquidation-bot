@@ -5,6 +5,7 @@ import "@openzeppelin/contracts/interfaces/IERC3156.sol";
 import "@openzeppelin/contracts/utils/math/SafeMath.sol";
 import "@openzeppelin/contracts/token/ERC20/ERC20.sol";
 import "@openzeppelin/contracts/access/Ownable.sol";
+import "@openzeppelin/contracts/utils/Address.sol";
 import "hardhat/console.sol";
 
 import "./joe-core/IWAVAX.sol";
@@ -228,7 +229,13 @@ contract FlashloanBorrower is IERC3156FlashBorrower, Ownable {
             data
         );
 
-        // d. Calculate profit made after gas
+        // TODO: double check that we don't have any balances of flash token, collateral token or 
+        // borrowToken
+
+        // TODO: Move picking logic into contract and see if you can hit it again...
+
+        Address.sendValue(payable(msg.sender), address(this).balance);
+
         emit LiquidateSuccess();
         console.log("Done");
     }

@@ -127,6 +127,13 @@ describe("FlashloanBorrower", () => {
 
     const maxRepayAmount = borrowPosition.borrowBalanceCurrent.div(2);
 
+    const signers = await ethers.getSigners();
+    const deployer = signers[0];
+
+    const balanceBefore = await ethers.provider.getBalance(deployer.address);
+
+    console.log("Balance before", ethers.utils.formatUnits(balanceBefore));
+
     await expect(
       flashloanBorrower.initiate(
         borrower,
@@ -136,6 +143,10 @@ describe("FlashloanBorrower", () => {
         flashLoanToken
       )
     ).to.emit(flashloanBorrower, "LiquidateSuccess");
+
+    // d. Calculate profit made after gas...
+    const balanceAfter = await ethers.provider.getBalance(deployer.address);
+    console.log("Balance after", ethers.utils.formatUnits(balanceAfter));
   });
 });
 
