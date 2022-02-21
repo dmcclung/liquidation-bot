@@ -6,11 +6,12 @@ import joelensAbi from "../external/JoeLens.json";
 import joetrollerAbi from "../external/Joetroller.json";
 
 const admin = "0x5D3e4C0FE11e0aE4c32F0FF74B4544C49538AC61";
+const oracle = "0xe34309613B061545d42c4160ec4d64240b114482";
 const borrower = "0xac5bcf653bd20ddc39f42128d4d50cb085c1e886";
+const joeRouter = "0x60aE616a2155Ee3d9A68541Ba4544862310933d4";
+const flashLoanToken = "0x929f5caB61DFEc79a5431a7734a68D714C4633fa";
 const joelensAddress = "0x997fbA28c75747417571c5F3fe50015AaC2BB073";
 const joetrollerAddress = "0xdc13687554205E5b89Ac783db14bb5bba4A1eDaC";
-
-const flashLoanToken = "0x929f5caB61DFEc79a5431a7734a68D714C4633fa";
 
 let joelens: Contract;
 let joetroller: Contract;
@@ -94,7 +95,6 @@ describe("FlashloanBorrower", () => {
     // b. enterMarket == true (otherwise it’s not posted as collateral)
     // c. Must have enough supplyBalanceUnderlying to seize 50% of borrow value
 
-    // TODO: Revisit how we pick the collateral
     let seizablePosition;
     for (let i = 0; i < jTokenBalances.length; i++) {
       if (
@@ -118,29 +118,24 @@ describe("FlashloanBorrower", () => {
     const FlashloanBorrower = await ethers.getContractFactory(
       "FlashloanBorrower"
     );
-    const flashloanBorrower = await FlashloanBorrower.deploy();
+    const flashloanBorrower = await FlashloanBorrower.deploy(
+      oracle,
+      joeRouter,
+      joetrollerAddress
+    );
     await flashloanBorrower.deployed();
 
     const maxRepayAmount = borrowPosition.borrowBalanceCurrent.div(2);
 
-    // TODO: Collateral may need to be specified as underlying
-
-    const flashTx = await flashloanBorrower.initiate(
-      borrower,
-      borrowPosition.jToken,
-      maxRepayAmount,
-      seizablePosition.jToken,
-      flashLoanToken
-    );
-    await flashTx.wait();
-
-    // Perform flash loan:
-    // a. Borrow borrowed token to repay borrow position.
-    // b. Redeem underlying seized tokens
-    // c. Swap underlying seized tokens for AVAX using Trader Joe router
-    // d. Calculate profit made after gas
-
-    // expect certain LiquidateEvent
+    await expect(
+      flashloanBorrower.initiate(
+        borrower,
+        borrowPosition.jToken,
+        maxRepayAmount,
+        seizablePosition.jToken,
+        flashLoanToken
+      )
+    ).to.emit(flashloanBorrower, "LiquidateSuccess");
   });
 });
 

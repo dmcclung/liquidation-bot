@@ -22,10 +22,12 @@ contract FlashloanBorrower is IERC3156FlashBorrower, Ownable {
     IJoeRouter02 private router;
     JoetrollerInterface private joetroller;
 
-    constructor() {
-        oracle = PriceOracle(0xe34309613B061545d42c4160ec4d64240b114482);
-        router = IJoeRouter02(0x60aE616a2155Ee3d9A68541Ba4544862310933d4);
-        joetroller = JoetrollerInterface(0xdc13687554205E5b89Ac783db14bb5bba4A1eDaC);
+    event LiquidateSuccess();
+
+    constructor(address _oracle, address _router, address _joetroller) {
+        oracle = PriceOracle(_oracle);
+        router = IJoeRouter02(_router);
+        joetroller = JoetrollerInterface(_joetroller);
     }
 
     receive() external payable {
@@ -226,6 +228,8 @@ contract FlashloanBorrower is IERC3156FlashBorrower, Ownable {
             data
         );
 
+        // d. Calculate profit made after gas
+        emit LiquidateSuccess();
         console.log("Done");
     }
 }
