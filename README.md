@@ -1,4 +1,24 @@
 # liquidation bot
+
+# Mock code
+```
+const priceOracleAddress = "0xe34309613B061545d42c4160ec4d64240b114482";
+
+const mockPriceOracleBytecode =
+      "0x6080604052348015600f57600080fd5b506004361060285760003560e01c8063fc57d4df14602d575b600080fd5b605060048036036020811015604157600080fd5b50356001600160a01b03166062565b60408051918252519081900360200190f35b600073c22f01ddc8010ee05574028528614634684ec29e6001600160a01b038316141560965750671b455da60233e80060a2565b506804fc4598cedb5be8005b91905056fea265627a7a72315820c25c8c88d94234b6d7579c86a1c033cbc5229ab85b4d1727f3eaf0b6572a36c464736f6c63430005100032";
+await ethers.provider.send("hardhat_setCode", [
+    priceOracleAddress,
+    mockPriceOracleBytecode,
+])
+
+const priceOracle = await ethers.getContractAt(
+      priceOracleAbi,
+      priceOracleAddress
+    );
+const avaxPrice = await priceOracle.callStatic.getUnderlyingPrice(tokenId);
+console.log("Price of avax", ethers.utils.formatEther(avaxPrice));
+```
+
 # Advanced Sample Hardhat Project
 
 This project demonstrates an advanced Hardhat use case, integrating other tools commonly used alongside Hardhat in the ecosystem.

@@ -13,13 +13,18 @@ async function main() {
   // manually to make sure everything is compiled
   // await hre.run('compile');
 
+  // Joetroller address
+  const joetroller = "0xdc13687554205E5b89Ac783db14bb5bba4A1eDaC";
+
   // We get the contract to deploy
-  const FlashBorrower = await ethers.getContractFactory("FlashBorrower");
-  const flashBorrower = await FlashBorrower.deploy();
+  const FlashloanBorrower = await ethers.getContractFactory(
+    "FlashloanBorrower"
+  );
+  const flashloanBorrower = await FlashloanBorrower.deploy(joetroller);
 
-  await flashBorrower.deployed();
+  await flashloanBorrower.deployed();
 
-  console.log("FlashBorrower deployed to", flashBorrower.address);
+  console.log("FlashloanBorrower deployed to", flashloanBorrower.address);
 }
 
 // We recommend this pattern to be able to use async/await everywhere
