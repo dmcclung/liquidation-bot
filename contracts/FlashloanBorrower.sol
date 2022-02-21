@@ -13,16 +13,19 @@ import "./joe-lending/PriceOracle.sol";
 import "./joe-lending/JErc20Interface.sol";
 import "./joe-lending/JoetrollerInterface.sol";
 
+import "./DebugLend.sol";
 
 contract FlashloanBorrower is IERC3156FlashBorrower, Ownable {
     using SafeMath for uint256;
 
-    address private constant ROUTER = 0x60aE616a2155Ee3d9A68541Ba4544862310933d4;
-    address private constant ORACLE = 0xe34309613B061545d42c4160ec4d64240b114482;
-    address private constant CONTROLLER = 0xdc13687554205E5b89Ac783db14bb5bba4A1eDaC;
+    PriceOracle private oracle;
+    IJoeRouter02 private router;
+    JoetrollerInterface private joetroller;
 
     constructor() {
-        console.log("Deployed", msg.sender);
+        oracle = PriceOracle(0xe34309613B061545d42c4160ec4d64240b114482);
+        router = IJoeRouter02(0x60aE616a2155Ee3d9A68541Ba4544862310933d4);
+        joetroller = JoetrollerInterface(0xdc13687554205E5b89Ac783db14bb5bba4A1eDaC);
     }
 
     receive() external payable {
@@ -39,7 +42,7 @@ contract FlashloanBorrower is IERC3156FlashBorrower, Ownable {
         console.log("onFlashLoan called");
 
         // Make sure this came from a jToken
-        require(JoetrollerInterface(CONTROLLER).isMarketListed(msg.sender), "Did this come from a jToken?");
+        require(joetroller.isMarketListed(msg.sender), "Did this come from a jToken?");
 
         // Require the initiator be the owner of the contract
         require(initiator == owner(), "Unknown initiator");
@@ -86,13 +89,13 @@ contract FlashloanBorrower is IERC3156FlashBorrower, Ownable {
         uint256 borrowAmount,
         address collateralToken
     ) internal {
-        ERC20(flashLoanToken).approve(ROUTER, flashLoanAmount);
+        ERC20(flashLoanToken).approve(address(router), flashLoanAmount);
 
         address[] memory path = new address[](2);
         path[0] = flashLoanToken;
         path[1] = JErc20Interface(borrowToken).underlying();
 
-        IJoeRouter02(ROUTER).swapExactTokensForTokens(
+        router.swapExactTokensForTokens(
             flashLoanAmount, 
             borrowAmount, 
             path, 
@@ -100,22 +103,6 @@ contract FlashloanBorrower is IERC3156FlashBorrower, Ownable {
             block.timestamp
         );
 
-        // TODO: Debug amounts from swap and debug liquidateBorrow called, get error
-        liquidateDebug(borrower, borrowToken, borrowAmount, collateralToken);
-
-        // uint256 accrueDebug = JErc20Interface(collateralToken).accrueInterest();
-        // uint256 repayBorrowDebug = JoetrollerInterface(CONTROLLER).repayBorrowAllowed(borrowToken, address(this), borrower, borrowAmount);
-        // console.log("repay borrow debug", repayBorrowDebug);
-        
-        // console.log("Accrue debug", accrueDebug);
-
-        calculateSeizeTokensDebug(borrowToken, collateralToken, borrowAmount);
-        
-        console.log("Clltrl Token", collateralToken);
-        console.log("Borrow Token", borrowToken);
-        console.log("Borrow Amnt ", borrowAmount);
-
-        // TODO: Approve WAVAX transferIn 
         ERC20(JErc20Interface(borrowToken).underlying()).approve(borrowToken, borrowAmount);
 
         JErc20Interface(borrowToken).liquidateBorrow(borrower, borrowAmount, collateralToken);
@@ -125,8 +112,6 @@ contract FlashloanBorrower is IERC3156FlashBorrower, Ownable {
             collateralToken, 
             JErc20Interface(collateralToken).underlying()
         );
-
-        console.log("Redeemed balance", redeemedBalance);
 
         uint256 spentBalance = swapRedeemedToFlashToken(
             flashLoanAmount, 
@@ -141,8 +126,7 @@ contract FlashloanBorrower is IERC3156FlashBorrower, Ownable {
 
         // Remaining balance of redeemed tokens
         swapRemainingToAVAX(
-            JErc20Interface(collateralToken).underlying(), 
-            borrowAmount, 
+            JErc20Interface(collateralToken).underlying(),
             redeemedBalance - spentBalance
         );
     }
@@ -154,7 +138,7 @@ contract FlashloanBorrower is IERC3156FlashBorrower, Ownable {
         address underlying,
         address flashLoanToken
     ) internal returns (uint256) {
-        ERC20(underlying).approve(ROUTER, redeemedBalance);
+        ERC20(underlying).approve(address(router), redeemedBalance);
 
         uint256 flashAmountPlusFee = flashLoanAmount + fee;
 
@@ -163,7 +147,7 @@ contract FlashloanBorrower is IERC3156FlashBorrower, Ownable {
         path[1] = flashLoanToken;
 
         // Swap redeemed tokens for flash loan amount plus fee
-        uint256[] memory swappedAmounts = IJoeRouter02(ROUTER).swapTokensForExactTokens(
+        uint256[] memory swappedAmounts = router.swapTokensForExactTokens(
             flashAmountPlusFee,
             redeemedBalance, 
             path, 
@@ -175,93 +159,38 @@ contract FlashloanBorrower is IERC3156FlashBorrower, Ownable {
     }
 
     function swapRemainingToAVAX(
-        address underlying, 
-        uint256 borrowAmount, 
+        address underlying,
         uint256 remainingBalance
     ) internal {
-        if (underlying == IJoeRouter02(ROUTER).WAVAX()) {
+        if (underlying == router.WAVAX()) {
             IWAVAX(underlying).withdraw(
                 ERC20(underlying).balanceOf(address(this))
             );
             return;
         }
 
-        ERC20(underlying).approve(ROUTER, remainingBalance);
-        console.log("Underlying approved");
+        ERC20(underlying).approve(address(router), remainingBalance);
 
         // Swap remaining to AVAX
-        console.log("Underlying", underlying);
-        uint256 redeemedPrice = PriceOracle(ORACLE).getUnderlyingPrice(underlying);
-        console.log("Redeemed price", redeemedPrice);
+        uint256 redeemedPrice = oracle.getUnderlyingPrice(underlying);
+        uint256 avaxPrice = oracle.getUnderlyingPrice(router.WAVAX());
 
-        uint256 avaxPrice = PriceOracle(ORACLE).getUnderlyingPrice(IJoeRouter02(ROUTER).WAVAX());
-        console.log("Avax price", avaxPrice);
+        require(redeemedPrice > 0, "No redeemed price");
+        require(avaxPrice > 0, "No avax price");
 
-        uint256 avaxAmount = borrowAmount.mul(avaxPrice) / redeemedPrice;
-
-        console.log("AVAX Amount min", avaxAmount);
-        console.log("Remaining balance", remainingBalance);
-        console.log("Underlying", underlying);
+        uint256 avaxAmount = remainingBalance.mul(redeemedPrice) / avaxPrice;
 
         address[] memory path = new address[](2);
         path[0] = underlying;
-        path[1] = IJoeRouter02(ROUTER).WAVAX();
+        path[1] = router.WAVAX();
 
-        IJoeRouter02(ROUTER).swapExactTokensForAVAX(
+        router.swapExactTokensForAVAX(
             remainingBalance, 
             avaxAmount, 
             path,
             address(this), 
             block.timestamp
         );
-    }
-
-    function calculateSeizeTokensDebug(
-        address borrowToken,
-        address collateralToken,
-        uint256 borrowAmount
-    ) internal view {
-        (uint256 err, uint256 seizeTokensCalculated) = JoetrollerInterface(CONTROLLER).liquidateCalculateSeizeTokens(
-            borrowToken,
-            collateralToken,
-            borrowAmount
-        );
-
-        console.log("error", err, "seizeTokens", seizeTokensCalculated);
-    }
-
-    function seizeDebug(
-        address jTokenCollateral,
-        address jTokenBorrowed,
-        address borrower,
-        uint256 seizeAmount
-    ) internal {
-        uint256 allowed = JoetrollerInterface(CONTROLLER).seizeAllowed(
-            jTokenCollateral, 
-            jTokenBorrowed, 
-            address(this), 
-            borrower, 
-            seizeAmount
-        );
-
-        console.log("Seize allowed %s", allowed);
-    }
-
-    function liquidateDebug(
-        address borrower,
-        address borrowToken,
-        uint256 borrowAmount,
-        address collateralToken
-    ) internal {
-        uint256 allowed = JoetrollerInterface(CONTROLLER).liquidateBorrowAllowed(
-            borrowToken,
-            collateralToken,
-            address(this),
-            borrower,
-            borrowAmount
-        );
-        
-        console.log("Liquidate borrow allowed %s", allowed);
     }
 
     function initiate(
@@ -275,18 +204,14 @@ contract FlashloanBorrower is IERC3156FlashBorrower, Ownable {
 
         require(borrowToken != flashLoanToken, "Change flash loan lender");
 
-        uint256 flashLoanTokenPrice = PriceOracle(ORACLE).getUnderlyingPrice(flashLoanToken);
-        uint256 borrowTokenPrice = PriceOracle(ORACLE).getUnderlyingPrice(borrowToken);
+        uint256 flashLoanTokenPrice = oracle.getUnderlyingPrice(flashLoanToken);
+        uint256 borrowTokenPrice = oracle.getUnderlyingPrice(borrowToken);
 
         require(borrowTokenPrice > 0, "No borrow token price");
         require(flashLoanTokenPrice > 0, "No flash loan token price");
 
         uint256 flashLoanAmount = borrowAmount.mul(borrowTokenPrice) / flashLoanTokenPrice;
         flashLoanAmount = flashLoanAmount + (flashLoanAmount.mul(30) / 10000);
-
-
-
-        seizeDebug(collateralToken, borrowToken, borrower, borrowAmount);
 
         bytes memory data = abi.encode(
             borrower, 
@@ -300,5 +225,7 @@ contract FlashloanBorrower is IERC3156FlashBorrower, Ownable {
             flashLoanAmount,
             data
         );
+
+        console.log("Done");
     }
 }
