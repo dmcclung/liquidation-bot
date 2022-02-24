@@ -21,6 +21,16 @@ const config: HardhatUserConfig = {
         blockNumber: 6668174,
       },
     },
+    avax: {
+      url: process.env.AVAX_URL || "",
+      accounts:
+        process.env.PRIVATE_KEY !== undefined ? [process.env.PRIVATE_KEY] : [],
+    },
+    avaxtest: {
+      url: process.env.AVAX_TEST_URL || "",
+      accounts:
+        process.env.PRIVATE_KEY !== undefined ? [process.env.PRIVATE_KEY] : [],
+    },
   },
 };
 

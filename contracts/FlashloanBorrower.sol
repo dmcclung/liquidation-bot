@@ -12,6 +12,7 @@ import "./joe-core/IWAVAX.sol";
 import "./joe-core/IJoeRouter02.sol";
 import "./joe-lending/PriceOracle.sol";
 import "./joe-lending/JErc20Interface.sol";
+import "./joe-lending/JoeLensInterface.sol";
 import "./joe-lending/JoetrollerInterface.sol";
 
 import "./DebugLend.sol";
@@ -21,18 +22,31 @@ contract FlashloanBorrower is IERC3156FlashBorrower, Ownable {
 
     PriceOracle private oracle;
     IJoeRouter02 private router;
+    JoeLensInterface private joelens;
     JoetrollerInterface private joetroller;
 
     event LiquidateSuccess();
 
-    constructor(address _oracle, address _router, address _joetroller) {
+    struct Tokens {
+        uint256 totalCollateralUSD;
+        uint256 totalBorrowUSD;
+        address borrowToken;
+        uint256 borrowAmount;
+        uint256 borrowValueUSD;
+        address flashLoanToken;
+        address collateralToken;
+        uint256 collateralValueUSD;
+    }
+
+    constructor(address _oracle, address _router, address _joelens, address _joetroller) {
         oracle = PriceOracle(_oracle);
         router = IJoeRouter02(_router);
+        joelens = JoeLensInterface(_joelens);
         joetroller = JoetrollerInterface(_joetroller);
     }
 
     receive() external payable {
-        console.log("Received", msg.value);
+        console.log("Received AVAX", msg.value);
     }
 
     function onFlashLoan(
@@ -196,13 +210,79 @@ contract FlashloanBorrower is IERC3156FlashBorrower, Ownable {
         );
     }
 
+    function liquidate(address borrower) external onlyOwner {
+        console.log("Liquidate called");
+        console.log("start gas", gasleft());
+
+        Tokens memory tokens;
+
+        address[] memory jTokens = joetroller.getAssetsIn(borrower);
+        JTokenBalances[] memory jTokenBalances = joelens.jTokenBalancesAll(jTokens, borrower);
+        for (uint i = 0; i < jTokenBalances.length; i++) {
+            JTokenBalances memory jTokenBalance = jTokenBalances[i];
+            
+            // Check collateral
+            if (jTokenBalance.collateralEnabled) {
+                if (jTokenBalance.balanceOfUnderlyingCurrent > 0) {
+                    tokens.totalCollateralUSD += jTokenBalance.collateralValueUSD;
+                    if (tokens.collateralToken == address(0) || 
+                        jTokenBalance.collateralValueUSD > tokens.collateralValueUSD) {
+                        tokens.collateralToken = jTokenBalance.jToken;
+                        tokens.collateralValueUSD = jTokenBalance.collateralValueUSD;
+                    }
+                }
+            }
+
+            // Check borrow
+            if (jTokenBalance.borrowValueUSD > 0) {
+                tokens.totalBorrowUSD += jTokenBalance.borrowValueUSD;
+                if (tokens.borrowToken == address(0) ||
+                    jTokenBalance.borrowValueUSD > tokens.borrowValueUSD) {
+                    tokens.borrowToken = jTokenBalance.jToken;
+                    tokens.borrowValueUSD = jTokenBalance.borrowValueUSD;
+                    tokens.borrowAmount = jTokenBalance.borrowBalanceCurrent / 2;
+                }
+            }
+        }
+
+        require(tokens.collateralValueUSD >= (tokens.borrowValueUSD / 2), "Not enough collateral");
+
+        uint256 seize = (tokens.borrowValueUSD / 2).mul(110) / 100;
+        console.log("Seize", seize);
+
+        tokens.flashLoanToken = getFlashLoanToken(tokens.borrowToken);
+
+        initiate(
+            borrower, 
+            tokens.borrowToken, 
+            tokens.borrowAmount, 
+            tokens.collateralToken, 
+            tokens.flashLoanToken
+        );
+
+        emit LiquidateSuccess();
+
+        console.log("End gas", gasleft());
+        console.log("Done");
+    }
+
+    function getFlashLoanToken(address borrowToken) internal view returns (address jToken) {
+        // return a token that is not the borrowToken
+        address[] memory jTokens = joetroller.getAllMarkets();
+        for (uint i = 0; i < jTokens.length; i++) {
+            if (borrowToken != jTokens[i]) {
+                return jTokens[i];
+            }
+        }
+    }
+
     function initiate(
         address borrower,
         address borrowToken,
         uint256 borrowAmount,
         address collateralToken,
         address flashLoanToken
-    ) external onlyOwner {
+    ) internal {
         console.log("Initiate called");
 
         require(borrowToken != flashLoanToken, "Change flash loan lender");
@@ -229,14 +309,6 @@ contract FlashloanBorrower is IERC3156FlashBorrower, Ownable {
             data
         );
 
-        // TODO: double check that we don't have any balances of flash token, collateral token or 
-        // borrowToken
-
-        // TODO: Move picking logic into contract and see if you can hit it again...
-
         Address.sendValue(payable(msg.sender), address(this).balance);
-
-        emit LiquidateSuccess();
-        console.log("Done");
     }
 }

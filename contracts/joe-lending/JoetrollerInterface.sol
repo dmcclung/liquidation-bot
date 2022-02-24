@@ -3,7 +3,8 @@ pragma solidity ^0.8.0;
 
 interface JoetrollerInterface {
     function closeFactorMantissa() external returns (uint256);
-
+    function getAssetsIn(address account) external view returns (address[] memory);
+    function getAllMarkets() external view returns (address[] memory);
     function enterMarkets(address[] calldata jTokens) external returns (uint256[] memory);
     function exitMarket(address jToken) external returns (uint256);
 
