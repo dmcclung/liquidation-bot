@@ -108,11 +108,13 @@ contract FlashloanBorrower is IERC3156FlashBorrower, Ownable {
     ) internal {
         ERC20(flashLoanToken).approve(address(router), flashLoanAmount);
 
+        console.log("Borrow amount", borrowAmount);
+
         address[] memory path = new address[](2);
         path[0] = flashLoanToken;
         path[1] = JErc20Interface(borrowToken).underlying();
 
-        router.swapExactTokensForTokens(
+        uint256[] memory amounts = router.swapExactTokensForTokens(
             flashLoanAmount, 
             borrowAmount, 
             path, 
@@ -120,15 +122,21 @@ contract FlashloanBorrower is IERC3156FlashBorrower, Ownable {
             block.timestamp
         );
 
+        console.log("javax output from flash swap", amounts[1]);
+
         ERC20(JErc20Interface(borrowToken).underlying()).approve(borrowToken, borrowAmount);
 
         JErc20Interface(borrowToken).liquidateBorrow(borrower, borrowAmount, collateralToken);
+
+        console.log("After liquidate, balance of javax", ERC20(borrowToken).balanceOf(address(this)));
 
         // Redeem and then swap to flash loan token to repay the flash loan
         uint256 redeemedBalance = redeemCollateral(
             collateralToken, 
             JErc20Interface(collateralToken).underlying()
         );
+
+        console.log("Redeemed balance", redeemedBalance);
 
         uint256 spentBalance = swapRedeemedToFlashToken(
             flashLoanAmount, 
@@ -138,14 +146,16 @@ contract FlashloanBorrower is IERC3156FlashBorrower, Ownable {
             flashLoanToken
         );
 
+        console.log("Spent balance", spentBalance);
+
         // Approve the flash loan lender to take back what is owed
         ERC20(flashLoanToken).approve(msg.sender, flashLoanAmount + fee);
 
+        // TODO: Important, check this value!!
+        console.log("flashamount + plus", flashLoanAmount + fee);
+
         // Remaining balance of redeemed tokens
-        swapRemainingToAVAX(
-            JErc20Interface(collateralToken).underlying(),
-            redeemedBalance - spentBalance
-        );
+        swapRemainingToAVAX(JErc20Interface(collateralToken).underlying());
     }
 
     function swapRedeemedToFlashToken(
@@ -172,17 +182,16 @@ contract FlashloanBorrower is IERC3156FlashBorrower, Ownable {
             block.timestamp
         );
 
-        return swappedAmounts[1];
+        console.log("Redeemed swapped", swappedAmounts[0]);
+        console.log("Flash token amount", swappedAmounts[1]);
+
+        return swappedAmounts[0];
     }
 
-    function swapRemainingToAVAX(
-        address underlying,
-        uint256 remainingBalance
-    ) internal {
+    function swapRemainingToAVAX(address underlying) internal {
+        uint256 remainingBalance = ERC20(underlying).balanceOf(address(this));
         if (underlying == router.WAVAX()) {
-            IWAVAX(underlying).withdraw(
-                ERC20(underlying).balanceOf(address(this))
-            );
+            IWAVAX(underlying).withdraw(remainingBalance);
             return;
         }
 
@@ -247,9 +256,6 @@ contract FlashloanBorrower is IERC3156FlashBorrower, Ownable {
 
         require(tokens.collateralValueUSD >= (tokens.borrowValueUSD / 2), "Not enough collateral");
 
-        uint256 seize = (tokens.borrowValueUSD / 2).mul(110) / 100;
-        console.log("Seize", seize);
-
         tokens.flashLoanToken = getFlashLoanToken(tokens.borrowToken);
 
         initiate(
@@ -309,6 +315,8 @@ contract FlashloanBorrower is IERC3156FlashBorrower, Ownable {
             data
         );
 
+        console.log("sending to", msg.sender);
+        console.log("balance", address(this).balance);
         Address.sendValue(payable(msg.sender), address(this).balance);
     }
 }

@@ -15,7 +15,6 @@ const config: HardhatUserConfig = {
   networks: {
     hardhat: {
       chainId: 43114,
-      gasPrice: 125000000000,
       forking: {
         url: "https://api.avax.network/ext/bc/C/rpc",
         blockNumber: 6668174,

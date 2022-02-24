@@ -1,6 +1,6 @@
 import { expect } from "chai";
 import { ethers } from "hardhat";
-import { setCollateralFactor } from "./TestHelper";
+import { setCollateralFactor, calculateProfit } from "./TestHelper";
 import {
   javax,
   oracle,
@@ -40,15 +40,26 @@ describe("FlashloanBorrower", () => {
 
     const signers = await ethers.getSigners();
     const deployer = signers[0];
+    const balanceStart = await ethers.provider.getBalance(deployer.address);
 
     // TODO: Calculate profit with balance of Avax - gas expended, pass in price of gas
-    console.log("Start balance", ethers.provider.getBalance(deployer.address));
-
-    await expect(flashloanBorrower.liquidate(borrower)).to.emit(
+    /* await expect(flashloanBorrower.liquidate(borrower)).to.emit(
       flashloanBorrower,
       "LiquidateSuccess"
-    );
+    ); */
 
-    console.log("End balance", ethers.provider.getBalance(deployer.address));
+    const tx = await flashloanBorrower.liquidate(borrower);
+    const txRes = await tx.wait();
+
+    const gasUsed = txRes.gasUsed;
+    const gasPrice = txRes.effectiveGasPrice;
+
+    const balanceEnd = await ethers.provider.getBalance(deployer.address);
+
+    const balanceDelta = balanceEnd.sub(balanceStart);
+    console.log("Balance Delta", ethers.utils.formatUnits(balanceDelta));
+
+    const profit = await calculateProfit(borrower, gasUsed, gasPrice);
+    console.log("Profit USD", ethers.utils.formatUnits(profit));
   });
 });

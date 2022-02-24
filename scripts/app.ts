@@ -104,6 +104,7 @@ const go = async () => {
       console.log(ethers.utils.formatUnits(revenue));
 
       // Subtract gas fees and swap / flash loan fees
+      // TODO: Not in USD
       const gasPrice = await ethers.provider.getGasPrice();
       const gasCost = gasPrice.mul("300000");
 
