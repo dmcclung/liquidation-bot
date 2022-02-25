@@ -122,13 +122,13 @@ contract FlashloanBorrower is IERC3156FlashBorrower, Ownable {
             block.timestamp
         );
 
-        console.log("javax output from flash swap", amounts[1]);
+        console.log("Borrow token output from flash swap", amounts[1]);
 
         ERC20(JErc20Interface(borrowToken).underlying()).approve(borrowToken, borrowAmount);
 
         JErc20Interface(borrowToken).liquidateBorrow(borrower, borrowAmount, collateralToken);
 
-        console.log("After liquidate, balance of javax", ERC20(borrowToken).balanceOf(address(this)));
+        console.log("After liquidate, balance of borrow token", ERC20(borrowToken).balanceOf(address(this)));
 
         // Redeem and then swap to flash loan token to repay the flash loan
         uint256 redeemedBalance = redeemCollateral(
@@ -151,8 +151,7 @@ contract FlashloanBorrower is IERC3156FlashBorrower, Ownable {
         // Approve the flash loan lender to take back what is owed
         ERC20(flashLoanToken).approve(msg.sender, flashLoanAmount + fee);
 
-        // TODO: Important, check this value!!
-        console.log("flashamount + plus", flashLoanAmount + fee);
+        console.log("Flash amount + fee", flashLoanAmount + fee);
 
         // Remaining balance of redeemed tokens
         swapRemainingToAVAX(JErc20Interface(collateralToken).underlying());
@@ -221,7 +220,6 @@ contract FlashloanBorrower is IERC3156FlashBorrower, Ownable {
 
     function liquidate(address borrower) external onlyOwner {
         console.log("Liquidate called");
-        console.log("start gas", gasleft());
 
         Tokens memory tokens;
 
@@ -268,7 +266,6 @@ contract FlashloanBorrower is IERC3156FlashBorrower, Ownable {
 
         emit LiquidateSuccess();
 
-        console.log("End gas", gasleft());
         console.log("Done");
     }
 
@@ -315,8 +312,15 @@ contract FlashloanBorrower is IERC3156FlashBorrower, Ownable {
             data
         );
 
-        console.log("sending to", msg.sender);
-        console.log("balance", address(this).balance);
         Address.sendValue(payable(msg.sender), address(this).balance);
+    }
+
+    function withdraw(address asset) external onlyOwner {
+        if (asset == address(0)) {
+            Address.sendValue(payable(msg.sender), address(this).balance);
+        } else {
+            uint256 balance = IERC20(asset).balanceOf(address(this));
+            IERC20(asset).transfer(msg.sender, balance);
+        }
     }
 }

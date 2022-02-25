@@ -1,50 +1,63 @@
-# liquidation bot
+# Trader Joe Liquidation Bot Bounty
+This project demonstrates the concepts and implementation of a liquidation bot specifically for use with the Trader Joe DEX on Avalanche's C-chain.
 
-# Mock code
-```
-const priceOracleAddress = "0xe34309613B061545d42c4160ec4d64240b114482";
+This project comes with unit tests, contracts, interfaces to external contracts, and scripts to deploy and run the liquidation bot.
 
-const mockPriceOracleBytecode =
-      "0x6080604052348015600f57600080fd5b506004361060285760003560e01c8063fc57d4df14602d575b600080fd5b605060048036036020811015604157600080fd5b50356001600160a01b03166062565b60408051918252519081900360200190f35b600073c22f01ddc8010ee05574028528614634684ec29e6001600160a01b038316141560965750671b455da60233e80060a2565b506804fc4598cedb5be8005b91905056fea265627a7a72315820c25c8c88d94234b6d7579c86a1c033cbc5229ab85b4d1727f3eaf0b6572a36c464736f6c63430005100032";
-await ethers.provider.send("hardhat_setCode", [
-    priceOracleAddress,
-    mockPriceOracleBytecode,
-])
+# What is a liquidation
+A liquidation is an operation to cleanup underwater accounts on a decentralized exchange. Decentralized exchanges have no management that issue margin calls when accounts become undercollateralized; therefore, lending platforms must provide incentives and 
+the ability for third parties to perform flash loans that than repay borrows and seize collateral within certain constraints.
 
-const priceOracle = await ethers.getContractAt(
-      priceOracleAbi,
-      priceOracleAddress
-    );
-const avaxPrice = await priceOracle.callStatic.getUnderlyingPrice(tokenId);
-console.log("Price of avax", ethers.utils.formatEther(avaxPrice));
-```
+The primary constraint is up to 50% of the borrow amount can be seized. Therefore, the amount of collateral owned by the borrower must be sufficient or at least 50% of the borrow value.
 
-# Advanced Sample Hardhat Project
+# Source code
+scripts/app.ts
+This is the primary script that can be run to monitor for unhealthy accounts and liquidate those meeting the criteria.
 
-This project demonstrates an advanced Hardhat use case, integrating other tools commonly used alongside Hardhat in the ecosystem.
+scripts/deploy.ts
+This is the hardhat deploy script.
 
-The project comes with a sample contract, a test for that contract, a sample script that deploys that contract, and an example of a task implementation, which simply lists the available accounts. It also comes with a variety of other tools, preconfigured to work with the project code.
+test/FlashloanBorrower.ts
+Unit tests which call the liquidate function of the FlashloanBorrower contract.
 
-Try running some of the following tasks:
-
+# Runtime options
+Compiles all contracts and produces typechain for typescript scripts.
 ```shell
-npx hardhat accounts
-npx hardhat compile
-npx hardhat clean
-npx hardhat test
-npx hardhat node
-npx hardhat help
-REPORT_GAS=true npx hardhat test
-npx hardhat coverage
-npx hardhat run scripts/deploy.ts
-TS_NODE_FILES=true npx ts-node scripts/deploy.ts
-npx eslint '**/*.{js,ts}'
-npx eslint '**/*.{js,ts}' --fix
-npx prettier '**/*.{json,sol,md}' --check
-npx prettier '**/*.{json,sol,md}' --write
-npx solhint 'contracts/**/*.sol'
-npx solhint 'contracts/**/*.sol' --fix
+yarn compile
 ```
+
+Runs all mocha tests
+```shell
+yarn test
+```
+
+Run app.ts script against Avalanche mainnet
+```shell
+yarn run
+```
+
+Run app.ts script against Avalanche fuji (Note that Trader Joe is not deployed to Fuji)
+```shell
+yarn run:test
+```
+
+Deploy contracts to Avalanche mainnet
+```shell
+yarn deploy
+```
+
+Deploy contracts to Avalance fuji
+```shell
+yarn deploy:test
+```
+
+# Future Improvements
+A telegram / discord / twitter bot could be written that listens for the LiquidateSuccess event. The event would need a couple of parameters including the liquidator, borrower, and seized collateral amount.
+
+The contract could be updated to do multiple positions owned by a borrower. Right now, it only picks the greatest borrow position and greatest collateral position.
+
+app.ts could also be updated to save unhealthy or slightly healthy accounts to a file or db between runs. The script could also look for unprofitable gas prices and not liquidate when gas is above a certain price relative to the collateral being seized.
+
+I'd also like to optmize the solidity to reduce gas costs.
 
 # Etherscan verification
 
