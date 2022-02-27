@@ -19,25 +19,29 @@ This is the hardhat deploy script.
 test/FlashloanBorrower.ts
 Unit tests which call the liquidate function of the FlashloanBorrower contract.
 
+contracts/FlashloanBorrower.sol
+TODO: 
+
 # Runtime options
 Compiles all contracts and produces typechain for typescript scripts.
 ```shell
 yarn compile
 ```
 
-Runs all mocha tests
+Runs all mocha tests. Note if you see ```Error: Timeout of 40000ms exceeded.```, the unit tests rely on 
+forking avax mainnet, network performance can cause tests to timeout.
 ```shell
 yarn test
 ```
 
 Run app.ts script against Avalanche mainnet
 ```shell
-yarn run
+yarn app
 ```
 
 Run app.ts script against Avalanche fuji (Note that Trader Joe is not deployed to Fuji)
 ```shell
-yarn run:test
+yarn app:test
 ```
 
 Deploy contracts to Avalanche mainnet

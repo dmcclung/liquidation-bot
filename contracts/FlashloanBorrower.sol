@@ -108,7 +108,11 @@ contract FlashloanBorrower is IERC3156FlashBorrower, Ownable {
     ) internal {
         ERC20(flashLoanToken).approve(address(router), flashLoanAmount);
 
+        console.log("Flash token", flashLoanToken);
+        console.log("Borrow token", borrowToken);
+        console.log("Collateral token", collateralToken);
         console.log("Borrow amount", borrowAmount);
+        console.log("Flash amount", flashLoanAmount);
 
         address[] memory path = new address[](2);
         path[0] = flashLoanToken;
@@ -254,7 +258,7 @@ contract FlashloanBorrower is IERC3156FlashBorrower, Ownable {
 
         require(tokens.collateralValueUSD >= (tokens.borrowValueUSD / 2), "Not enough collateral");
 
-        tokens.flashLoanToken = getFlashLoanToken(tokens.borrowToken);
+        tokens.flashLoanToken = getFlashLoanToken(tokens.borrowToken, tokens.collateralToken);
 
         initiate(
             borrower, 
@@ -269,11 +273,11 @@ contract FlashloanBorrower is IERC3156FlashBorrower, Ownable {
         console.log("Done");
     }
 
-    function getFlashLoanToken(address borrowToken) internal view returns (address jToken) {
+    function getFlashLoanToken(address borrowToken, address collateralToken) internal view returns (address jToken) {
         // return a token that is not the borrowToken
         address[] memory jTokens = joetroller.getAllMarkets();
         for (uint i = 0; i < jTokens.length; i++) {
-            if (borrowToken != jTokens[i]) {
+            if (borrowToken != jTokens[i] && collateralToken != jTokens[i]) {
                 return jTokens[i];
             }
         }
@@ -297,7 +301,7 @@ contract FlashloanBorrower is IERC3156FlashBorrower, Ownable {
         require(flashLoanTokenPrice > 0, "No flash loan token price");
 
         uint256 flashLoanAmount = borrowAmount.mul(borrowTokenPrice) / flashLoanTokenPrice;
-        flashLoanAmount = flashLoanAmount + (flashLoanAmount.mul(30) / 10000);
+        flashLoanAmount = flashLoanAmount + (flashLoanAmount.mul(60) / 10000);
 
         bytes memory data = abi.encode(
             borrower, 

@@ -3,6 +3,7 @@ import { ethers } from "hardhat";
 import { BigNumber } from "ethers";
 import fetch from "cross-fetch";
 import dotenv from "dotenv";
+import { calculateProfit } from "./calculateProfit";
 
 dotenv.config();
 
@@ -28,7 +29,12 @@ interface Account {
   health: string;
   totalBorrowValueInUSD: BigNumber;
   totalCollateralValueInUSD: BigNumber;
+  liquidated: boolean;
+  profit: BigNumber;
+  error: string;
 }
+
+const inMemoryStore = new Map<string, Account>();
 
 const go = async () => {
   if (!process.env.FLASH_LOAN_ADDRESS) {
@@ -97,24 +103,48 @@ const go = async () => {
     console.log("%s accounts with sufficient collateral", accounts.length);
 
     accounts.forEach(async (account: Account) => {
-      console.log(account.totalBorrowValueInUSD);
-      console.log(account.totalCollateralValueInUSD);
-      // If profitable, execute liquidate on address
-      const revenue = account.totalBorrowValueInUSD.div(2).mul(110).div(100);
-      console.log(ethers.utils.formatUnits(revenue));
+      if (inMemoryStore.has(account.id)) {
+        const existingAccount = inMemoryStore.get(account.id);
+        if (existingAccount) {
+          // If health is unchanged, skip
+          if (existingAccount.health === account.health) {
+            return;
+          }
+        }
+      }
 
-      // Subtract gas fees and swap / flash loan fees
-      // TODO: Not in USD
-      const gasPrice = await ethers.provider.getGasPrice();
-      const gasCost = gasPrice.mul("300000");
+      try {
+        const signers = await ethers.getSigners();
+        const deployer = signers[0];
+        const balanceStart = await ethers.provider.getBalance(deployer.address);
 
-      const fees = revenue.mul(68).div(10000);
-
-      const profit = revenue.sub(fees).sub(gasCost);
-
-      if (profit.gt(0)) {
+        console.log("Liquidating", account.id);
         const tx = await flashloanBorrower.liquidate(account.id);
-        await tx.wait();
+        const txRes = await tx.wait();
+        console.log("Success");
+
+        const balanceEnd = await ethers.provider.getBalance(deployer.address);
+        const balanceDifference = balanceEnd.sub(balanceStart);
+
+        const profit = await calculateProfit(
+          txRes.gasUsed,
+          txRes.effectiveGasPrice,
+          balanceDifference
+        );
+
+        console.log("Profit", profit);
+
+        account.liquidated = true;
+        account.profit = profit;
+
+        inMemoryStore.set(account.id, account);
+      } catch (err: any) {
+        const message = err.message ? err.message : err;
+        console.error(err);
+
+        account.liquidated = false;
+        account.error = message;
+        inMemoryStore.set(account.id, account);
       }
     });
 

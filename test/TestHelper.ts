@@ -1,16 +1,12 @@
 import { ethers, network } from "hardhat";
-import { BigNumber } from "ethers";
 import joetrollerAbi from "../external/Joetroller.json";
 import joelensAbi from "../external/JoeLens.json";
-import oracleAbi from "../external/PriceOracle.json";
 
 import {
   admin,
-  javax,
-  oracle,
   joelens as joelensAddress,
   joetroller as joetrollerAddress,
-} from "./Addresses";
+} from "../scripts/addresses";
 
 export const logAccountLimits = async (account: string) => {
   const accountLimits = await getAccountLimits(account);
@@ -67,45 +63,4 @@ export const setCollateralFactor = async (
     ethers.utils.parseEther(collateralFactor)
   );
   await tx.wait();
-};
-
-export const getAvaxPrice = async () => {
-  const priceOracle = await ethers.getContractAt(oracleAbi, oracle);
-  const price = await priceOracle.getUnderlyingPrice(javax);
-  return price;
-};
-
-export const calculateProfit = async (
-  txRes: any,
-  tx: any,
-  balanceDifference: BigNumber
-): Promise<BigNumber> => {
-  const gasUsed = txRes.gasUsed;
-  const gasLimit = tx.gasLimit;
-  const gasPrice = txRes.effectiveGasPrice;
-
-  console.log("Gas used", gasUsed);
-  console.log("Gas limit", gasLimit);
-  console.log("Effective gas price", gasPrice);
-
-  const transactionFee = gasUsed.mul(gasPrice);
-  console.log("Transaction fee", transactionFee);
-
-  const avaxPrice = await getAvaxPrice();
-  console.log("AVAX Price USD", avaxPrice);
-
-  const transactionFeeUSD = transactionFee
-    .mul(avaxPrice)
-    .div(BigNumber.from(10).pow(18));
-  console.log(
-    "Transaction fee USD",
-    ethers.utils.formatUnits(transactionFeeUSD)
-  );
-
-  const balanceDeltaUSD = balanceDifference
-    .mul(avaxPrice)
-    .div(BigNumber.from(10).pow(18));
-
-  console.log("Account change USD", ethers.utils.formatUnits(balanceDeltaUSD));
-  return balanceDeltaUSD;
 };
