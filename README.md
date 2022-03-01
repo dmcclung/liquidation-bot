@@ -17,19 +17,19 @@ https://snowtrace.io/tx/0x6275763bcf2655d79f61035fafe1d3c26d3d2231e9701e3b811a56
 https://snowtrace.io/tx/0xeacc957b2149a085cf25e97e991c815cd951ba825ea6c73b892fbf9dbd079f9f
 
 ## Source code
-scripts/app.ts
+```scripts/app.ts```
 This is the primary script that can be run to monitor for unhealthy accounts and liquidate those meeting the criteria.
 
-scripts/deploy.ts
+```scripts/deploy.ts```
 This is the hardhat deploy script.
 
-test/FlashloanBorrower.ts
+```test/FlashloanBorrower.ts```
 Unit tests which call the liquidate function of the FlashloanBorrower contract.
 
-contracts/FlashloanBorrower.sol
+```contracts/FlashloanBorrower.sol```
 Solidity contract that implements the flash loan, swaps, and liquidation.
 
-scripts/twitter.ts
+```scripts/twitter.ts```
 Twitter bot that listens for LiquidateSuccess events and tweets.
 
 ## Runtime options
