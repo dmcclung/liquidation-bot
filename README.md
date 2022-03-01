@@ -69,14 +69,14 @@ There are a number of Trader Joe accounts with multiple small positions that alt
 
 The liquidity bot contract is also susceptible to slippage problems with some borrow / collateral tokens. I also found an issue with LINK as collateral. No Trader Joe pools exist for LINK other than LINK/AVAX; therefore, if you need to flash loan from something like WETH to liquidate a LINK borrow or collateral, no pool exists to do the swap.
 
-# Future Improvements
+## Future Improvements
 The contract could be updated to do multiple positions owned by a borrower. Right now, it only picks the greatest borrow position and greatest collateral position. 
 
 app.ts could also be updated to save unhealthy or slightly healthy accounts to a file or db between runs.
 
 I'd also like to optimize the solidity to reduce gas costs. 
 
-# Etherscan verification
+## Etherscan verification
 
 To try out Etherscan verification, you first need to deploy a contract to an Ethereum network that's supported by Etherscan, such as Ropsten.
 
@@ -92,6 +92,6 @@ Then, copy the deployment address and paste it in to replace `DEPLOYED_CONTRACT_
 npx hardhat verify --network ropsten DEPLOYED_CONTRACT_ADDRESS "Hello, Hardhat!"
 ```
 
-# Performance optimizations
+## Performance optimizations
 
 For faster runs of your tests and scripts, consider skipping ts-node's type checking by setting the environment variable `TS_NODE_TRANSPILE_ONLY` to `1` in hardhat's environment. For more details see [the documentation](https://hardhat.org/guides/typescript.html#performance-optimizations).
