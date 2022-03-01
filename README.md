@@ -3,12 +3,20 @@ This project demonstrates the concepts and implementation of a liquidation bot s
 
 This project comes with unit tests, contracts, scripts to deploy and run the liquidation bot, and a twitter bot that tweets when the contract liquidates successfully.
 
-# What is a liquidation
+## What is a liquidation
 A liquidation seizes collateral from an underwater account on a decentralized exchange. Decentralized exchanges have no management that issue margin calls when accounts become undercollateralized; therefore, lending platforms must provide incentives and the ability for third parties to perform flash loans that than repay borrows and seize collateral within certain constraints.
 
 The primary constraint is up to 50% of the borrow amount can be seized in collateral. Therefore, the amount of collateral owned by the borrower must be sufficient. The collateral seized also has to have the value to incentivize liquidation. Small amounts may be lower than gas costs.
 
-# Source code
+## Contract addresses
+FlashloanBorrower contract is deployed on Avalanche mainnet [0x3F5A2107f116cd936E4038A9BD2D578d2e3E660c](https://snowtrace.io/address/0x3f5a2107f116cd936e4038a9bd2d578d2e3e660c)
+
+Successful liquidations
+https://snowtrace.io/tx/0x9c555fa6b6cc6817ba87ae60fd7bd0777e0eea3953384bc7dbcd3c60595d772f
+https://snowtrace.io/tx/0x6275763bcf2655d79f61035fafe1d3c26d3d2231e9701e3b811a56de92cf4d58
+https://snowtrace.io/tx/0xeacc957b2149a085cf25e97e991c815cd951ba825ea6c73b892fbf9dbd079f9f
+
+## Source code
 scripts/app.ts
 This is the primary script that can be run to monitor for unhealthy accounts and liquidate those meeting the criteria.
 
@@ -24,7 +32,7 @@ Solidity contract that implements the flash loan, swaps, and liquidation.
 scripts/twitter.ts
 Twitter bot that listens for LiquidateSuccess events and tweets.
 
-# Runtime options
+## Runtime options
 Compiles all contracts and produces typechain for typescript scripts.
 ```shell
 yarn compile
@@ -56,8 +64,8 @@ Deploy contracts to Avalance fuji
 yarn deploy:test
 ```
 
-# Observations
-There are a number of Trader Joe accounts with multiple small positions that although have a considerable total borrow and total collateral size, each position is too small to liquidate given gas costs.
+## Observations
+There are a number of Trader Joe accounts with multiple small positions that although have a considerable total borrow and total collateral size, each position is too small to liquidate given gas costs with the current implementation.
 
 The liquidity bot contract is also susceptible to slippage problems with some borrow / collateral tokens. I also found an issue with LINK as collateral. No Trader Joe pools exist for LINK other than LINK/AVAX; therefore, if you need to flash loan from something like WETH to liquidate a LINK borrow or collateral, no pool exists to do the swap.
 
