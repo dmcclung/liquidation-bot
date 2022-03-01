@@ -23,6 +23,5 @@ export const calculateProfit = async (
     .mul(avaxPrice)
     .div(BigNumber.from(10).pow(18));
 
-  console.log("Account change USD", ethers.utils.formatUnits(balanceDeltaUSD));
   return balanceDeltaUSD;
 };

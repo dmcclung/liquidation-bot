@@ -10,7 +10,9 @@
     "app": "hardhat run scripts/app.ts --network avax",
     "app:test": "hardhat run scripts/app.ts --network avaxtest",
     "deploy": "hardhat run scripts/deploy.ts",
-    "deploy:test": "hardhat run scripts/deploy.ts --network avaxtest"
+    "deploy:mainnet": "hardhat run scripts/deploy.ts --network avax",
+    "deploy:test": "hardhat run scripts/deploy.ts --network avaxtest",
+    "liquidate:mainnet": "hardhat run scripts/liquidate.ts --network avax"
   },
   "devDependencies": {
     "@apollo/client": "^3.5.9",

@@ -4,6 +4,7 @@ import { BigNumber } from "ethers";
 import fetch from "cross-fetch";
 import dotenv from "dotenv";
 import { calculateProfit } from "./calculateProfit";
+import { getAvaxPrice } from "./getAvaxPrice";
 
 dotenv.config();
 
@@ -93,16 +94,30 @@ const go = async () => {
     });
 
     // Filter out accounts with insufficient collateral
-    accounts = accounts.filter((account) => {
+    const gasPrice = await ethers.provider.getGasPrice();
+    const gasCost = BigNumber.from(1.3e6).mul(gasPrice);
+
+    const avaxPrice = await getAvaxPrice();
+    const gasCostUSD = gasCost.mul(avaxPrice).div(BigNumber.from(10).pow(18));
+    console.log(
+      "Estimated gas cost at curent prices: ",
+      ethers.utils.formatUnits(gasCostUSD)
+    );
+
+    accounts = accounts.filter((account: Account) => {
       return (
-        account.totalCollateralValueInUSD >=
-        account.totalBorrowValueInUSD.div(2)
+        account.totalBorrowValueInUSD.gt(account.totalCollateralValueInUSD) &&
+        account.totalCollateralValueInUSD.gte(
+          account.totalBorrowValueInUSD.div(2)
+        ) &&
+        account.totalBorrowValueInUSD.div(2).mul(110).div(100).gt(gasCostUSD)
       );
     });
 
     console.log("%s accounts with sufficient collateral", accounts.length);
 
-    accounts.forEach(async (account: Account) => {
+    for (let i = 0; i < accounts.length; i++) {
+      const account = accounts[i];
       if (inMemoryStore.has(account.id)) {
         const existingAccount = inMemoryStore.get(account.id);
         if (existingAccount) {
@@ -118,8 +133,14 @@ const go = async () => {
         const deployer = signers[0];
         const balanceStart = await ethers.provider.getBalance(deployer.address);
 
-        console.log("Liquidating", account.id);
-        const tx = await flashloanBorrower.liquidate(account.id);
+        console.log(
+          "Liquidating %s with collateral value %s",
+          account.id,
+          account.totalCollateralValueInUSD
+        );
+        const tx = await flashloanBorrower.liquidate(account.id, {
+          gasLimit: 1400000,
+        });
         const txRes = await tx.wait();
         console.log("Success");
 
@@ -132,7 +153,7 @@ const go = async () => {
           balanceDifference
         );
 
-        console.log("Profit", profit);
+        console.log("Profit", ethers.utils.formatUnits(profit));
 
         account.liquidated = true;
         account.profit = profit;
@@ -146,7 +167,7 @@ const go = async () => {
         account.error = message;
         inMemoryStore.set(account.id, account);
       }
-    });
+    }
 
     console.log("Finished iteration, waiting");
     await sleep(10000);
