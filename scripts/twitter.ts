@@ -37,7 +37,10 @@ async function main() {
 
   console.log("Attached to contract at", process.env.FLASH_LOAN_ADDRESS);
 
+  console.log("Waiting to tweet...");
+
   flashloanBorrower.on("LiquidateSuccess", () => {
+    console.log("LiquidateSuccess event received, tweeting");
     tweet();
   });
 }

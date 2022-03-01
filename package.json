@@ -13,7 +13,7 @@
     "deploy:mainnet": "hardhat run scripts/deploy.ts --network avax",
     "deploy:test": "hardhat run scripts/deploy.ts --network avaxtest",
     "liquidate:mainnet": "hardhat run scripts/liquidate.ts --network avax",
-    "twitter": "hardhate run scripts/twitter.ts --network avax"
+    "twitter": "hardhat run scripts/twitter.ts --network avax"
   },
   "devDependencies": {
     "@apollo/client": "^3.5.9",
