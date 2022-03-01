@@ -1,13 +1,12 @@
 # Trader Joe Liquidation Bot Bounty
 This project demonstrates the concepts and implementation of a liquidation bot specifically for use with the Trader Joe DEX on Avalanche's C-chain.
 
-This project comes with unit tests, contracts, interfaces to external contracts, and scripts to deploy and run the liquidation bot.
+This project comes with unit tests, contracts, scripts to deploy and run the liquidation bot, and a twitter bot that tweets when the contract liquidates successfully.
 
 # What is a liquidation
-A liquidation is an operation to cleanup underwater accounts on a decentralized exchange. Decentralized exchanges have no management that issue margin calls when accounts become undercollateralized; therefore, lending platforms must provide incentives and 
-the ability for third parties to perform flash loans that than repay borrows and seize collateral within certain constraints.
+A liquidation seizes collateral from an underwater account on a decentralized exchange. Decentralized exchanges have no management that issue margin calls when accounts become undercollateralized; therefore, lending platforms must provide incentives and the ability for third parties to perform flash loans that than repay borrows and seize collateral within certain constraints.
 
-The primary constraint is up to 50% of the borrow amount can be seized. Therefore, the amount of collateral owned by the borrower must be sufficient or at least 50% of the borrow value.
+The primary constraint is up to 50% of the borrow amount can be seized in collateral. Therefore, the amount of collateral owned by the borrower must be sufficient. The collateral seized also has to have the value to incentivize liquidation. Small amounts may be lower than gas costs.
 
 # Source code
 scripts/app.ts
@@ -20,7 +19,10 @@ test/FlashloanBorrower.ts
 Unit tests which call the liquidate function of the FlashloanBorrower contract.
 
 contracts/FlashloanBorrower.sol
-TODO: 
+Solidity contract that implements the flash loan, swaps, and liquidation.
+
+scripts/twitter.ts
+Twitter bot that listens for LiquidateSuccess events and tweets.
 
 # Runtime options
 Compiles all contracts and produces typechain for typescript scripts.
@@ -54,14 +56,17 @@ Deploy contracts to Avalance fuji
 yarn deploy:test
 ```
 
+# Observations
+There are a number of Trader Joe accounts with multiple small positions that although have a considerable total borrow and total collateral size, each position is too small to liquidate given gas costs.
+
+The liquidity bot contract is also susceptible to slippage problems with some borrow / collateral tokens. I also found an issue with LINK as collateral. No Trader Joe pools exist for LINK other than LINK/AVAX; therefore, if you need to flash loan from something like WETH to liquidate a LINK borrow or collateral, no pool exists to do the swap.
+
 # Future Improvements
-A telegram / discord / twitter bot could be written that listens for the LiquidateSuccess event. The event would need a couple of parameters including the liquidator, borrower, and seized collateral amount.
+The contract could be updated to do multiple positions owned by a borrower. Right now, it only picks the greatest borrow position and greatest collateral position. 
 
-The contract could be updated to do multiple positions owned by a borrower. Right now, it only picks the greatest borrow position and greatest collateral position.
+app.ts could also be updated to save unhealthy or slightly healthy accounts to a file or db between runs.
 
-app.ts could also be updated to save unhealthy or slightly healthy accounts to a file or db between runs. The script could also look for unprofitable gas prices and not liquidate when gas is above a certain price relative to the collateral being seized.
-
-I'd also like to optmize the solidity to reduce gas costs.
+I'd also like to optimize the solidity to reduce gas costs. 
 
 # Etherscan verification
 
