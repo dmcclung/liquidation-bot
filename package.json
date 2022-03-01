@@ -12,7 +12,8 @@
     "deploy": "hardhat run scripts/deploy.ts",
     "deploy:mainnet": "hardhat run scripts/deploy.ts --network avax",
     "deploy:test": "hardhat run scripts/deploy.ts --network avaxtest",
-    "liquidate:mainnet": "hardhat run scripts/liquidate.ts --network avax"
+    "liquidate:mainnet": "hardhat run scripts/liquidate.ts --network avax",
+    "twitter": "hardhate run scripts/twitter.ts --network avax"
   },
   "devDependencies": {
     "@apollo/client": "^3.5.9",
@@ -25,6 +26,7 @@
     "@types/chai": "^4.2.21",
     "@types/mocha": "^9.0.0",
     "@types/node": "^16.4.13",
+    "@types/twitter": "^1.7.1",
     "@typescript-eslint/eslint-plugin": "^4.29.1",
     "@typescript-eslint/parser": "^4.29.1",
     "chai": "^4.2.0",
@@ -49,6 +51,7 @@
     "solhint": "^3.3.6",
     "solidity-coverage": "^0.7.16",
     "ts-node": "^10.1.0",
+    "twitter": "^1.7.1",
     "typechain": "^5.1.2",
     "typescript": "^4.3.5"
   }
